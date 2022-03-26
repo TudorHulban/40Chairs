@@ -1,7 +1,5 @@
 package ring
 
-import "golang.org/x/exp/slices"
-
 type Ring struct {
 	Nodes []*Node
 	Load  Partitions
@@ -16,7 +14,7 @@ func NewRing(nodeIDs ...int) *Ring {
 	nodes := createNodes(nodeIDs...)
 
 	for _, node := range nodes {
-		res = append(res, &node)
+		res = append(res, &Node{ID: node.ID})
 	}
 
 	return &Ring{
@@ -33,7 +31,7 @@ func createNodes(nodeIDs ...int) Nodes {
 	var res Nodes
 
 	for _, id := range nodeIDs {
-		res = append(res, Node{ID: id})
+		res = append(res, &Node{ID: id})
 	}
 
 	return res
@@ -54,14 +52,18 @@ func (r Ring) getAssignments() Nodes {
 		}
 	}
 
-	res := make([]Node, len(r.Nodes))
+	res := make([]*Node, len(r.Nodes))
+	for ix, no := range r.Nodes {
+		res[ix] = &Node{
+			ID: no.ID,
+		}
+	}
 
+	var i int
 loop:
-	for i := 0; i < len(allRanges); i++ {
+	for i < len(allRanges) {
 		for _, node := range res {
-			if !slices.Contains(node.Load, allRanges[i]) {
-				node.Load = append(node.Load, allRanges[i])
-			}
+			node.Load = append(node.Load, allRanges[i])
 
 			if i == len(allRanges)-1 {
 				break loop

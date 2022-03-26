@@ -12,7 +12,7 @@ type Node struct {
 	ID   int
 }
 
-type Nodes []Node
+type Nodes []*Node
 
 func (n Nodes) WriteTo(w io.Writer) (int, error) {
 	if len(n) == 0 {
