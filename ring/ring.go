@@ -77,7 +77,7 @@ func (r *Ring) updateAssignments() {
 		}
 	}
 
-	allRanges := r.Load.ranges()
+	allRanges := r.Load.getFactoredRanges()
 	var i int
 loop:
 	for i < len(allRanges) {

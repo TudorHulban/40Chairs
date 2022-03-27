@@ -1,6 +1,7 @@
 package ring
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -14,25 +15,48 @@ func TestCreateNodes(t *testing.T) {
 	require.Equal(t, nodes[1].ID, 2)
 }
 
-func TestRing(t *testing.T) {
+func TestAssignments(t *testing.T) {
 	r := NewRing(1, 2)
+	r.SetFactor(2)
+
+	require.Equal(t, 20, len(r.Assignments.getRanges()))
+}
+
+func TestRing(t *testing.T) {
+	r := NewRing(1)
 	require.Greater(t, len(r.Nodes), 0)
 
+	maxNodes := 40
 	maxFactor := 5
 
-	for i := 3; i < 40; i++ {
+	output, errCr := os.Create("assignment_distribution")
+	if errCr != nil {
+		t.FailNow()
+	}
+
+	writeTo := output
+	writeTo.WriteString(fmt.Sprintf("Load: %v.\n\n", r.Load.getUniqueRanges()))
+
+	for i := 2; i <= maxNodes; i++ {
 		r.RegisterNode(i)
 
 		for f := 1; f <= maxFactor; f++ {
+			if f > len(r.Nodes) {
+				continue
+			}
+
 			r.SetFactor(f)
 
 			require.GreaterOrEqual(t, len(r.Nodes), len(r.Assignments))
 			require.Greater(t, len(r.Assignments), 0, "no assignments")
 
 			require.NoError(t, r.verifyAssignments(), "self verification")
+
+			writeTo.WriteString(fmt.Sprintf("Nodes: %d. Factor: %d\n", len(r.Nodes), f))
+			// writeTo.WriteString(fmt.Sprintf("Assignments: %v.\n", r.Assignments.getRanges()))
+
+			_, errAs := r.Assignments.WriteTo(writeTo)
+			require.NoError(t, errAs, "write to")
 		}
 	}
-
-	_, errAs := r.Assignments.WriteTo(os.Stdout)
-	require.NoError(t, errAs, "write to")
 }

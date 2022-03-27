@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"golang.org/x/exp/slices"
 )
 
 type Node struct {
@@ -25,5 +27,19 @@ func (n Nodes) WriteTo(w io.Writer) (int, error) {
 		res = append(res, fmt.Sprintf("Node ID: %d, load: %v.", node.ID, node.Load))
 	}
 
+	res = append(res, "\n")
+
 	return w.Write([]byte(strings.Join(res, "\n")))
+}
+
+func (n Nodes) getRanges() []Range {
+	var res []Range
+
+	for _, node := range n {
+		res = append(res, node.Load...)
+	}
+
+	slices.Sort[Range](res)
+
+	return res
 }
