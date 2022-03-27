@@ -1,29 +1,14 @@
 package ring
 
+import "fmt"
+
 type Ring struct {
-	Nodes []*Node
-	Load  Partitions
+	Nodes       Nodes
+	Assignments Nodes
+	Load        Partitions
 }
 
-func NewRing(nodeIDs ...int) *Ring {
-	if len(nodeIDs) == 0 {
-		return nil
-	}
-
-	var res []*Node
-	nodes := createNodes(nodeIDs...)
-
-	for _, node := range nodes {
-		res = append(res, &Node{ID: node.ID})
-	}
-
-	return &Ring{
-		Nodes: res,
-		Load:  NewPartitions(1),
-	}
-}
-
-func createNodes(nodeIDs ...int) Nodes {
+func newNodes(nodeIDs ...int) Nodes {
 	if len(nodeIDs) == 0 {
 		return nil
 	}
@@ -37,21 +22,54 @@ func createNodes(nodeIDs ...int) Nodes {
 	return res
 }
 
+func NewRing(nodeIDs ...int) *Ring {
+	if len(nodeIDs) == 0 {
+		return nil
+	}
+
+	var res []*Node
+	nodes := newNodes(nodeIDs...)
+
+	for _, node := range nodes {
+		res = append(res, &Node{ID: node.ID})
+	}
+
+	ring := Ring{
+		Nodes: res,
+		Load:  NewPartitions(1),
+	}
+
+	ring.updateAssignments()
+
+	return &ring
+}
+
+func (r *Ring) RegisterNode(id int) {
+	node := Node{
+		ID: id,
+	}
+
+	r.Nodes = append(r.Nodes, &node)
+	r.updateAssignments()
+}
+
 func (r *Ring) ModifyFactor(by int) {
 	for _, load := range r.Load {
 		load.Factor = load.Factor + by
 	}
+
+	r.updateAssignments()
 }
 
-func (r Ring) getAssignments() Nodes {
-	var allRanges []Range
-
+func (r *Ring) SetFactor(value int) {
 	for _, load := range r.Load {
-		for i := 0; i < load.Factor; i++ {
-			allRanges = append(allRanges, load.Range)
-		}
+		load.Factor = value
 	}
 
+	r.updateAssignments()
+}
+
+func (r *Ring) updateAssignments() {
 	res := make([]*Node, len(r.Nodes))
 	for ix, no := range r.Nodes {
 		res[ix] = &Node{
@@ -59,6 +77,7 @@ func (r Ring) getAssignments() Nodes {
 		}
 	}
 
+	allRanges := r.Load.ranges()
 	var i int
 loop:
 	for i < len(allRanges) {
@@ -73,5 +92,28 @@ loop:
 		}
 	}
 
-	return res
+	r.Assignments = []*Node{}
+	r.Assignments = append(r.Assignments, res...)
+}
+
+func (r *Ring) verifyAssignments() error {
+	var assignedRanges []Range
+
+	for _, node := range r.Assignments {
+		assignedRanges = append(assignedRanges, node.Load...)
+	}
+
+	occ := occurences[Range](assignedRanges)
+
+	for _, partition := range r.Load {
+		if _, exists := occ[partition.Range]; !exists {
+			return fmt.Errorf("not all partitions were mapped. missing '%v'", partition.Range)
+		}
+
+		if partition.Factor < occ[partition.Range] {
+			return fmt.Errorf("for range '%s' factor is only %d versus required %d", partition.Range, occ[partition.Range], partition.Factor)
+		}
+	}
+
+	return nil
 }

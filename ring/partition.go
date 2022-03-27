@@ -26,6 +26,18 @@ func NewPartitions(factor int) Partitions {
 	}
 }
 
+func (p Partitions) ranges() []Range {
+	var res []Range
+
+	for _, partition := range p {
+		for i := 0; i < partition.Factor; i++ {
+			res = append(res, partition.Range)
+		}
+	}
+
+	return res
+}
+
 func (p Partitions) getRanges() []string {
 	var res []string
 

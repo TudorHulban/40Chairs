@@ -1,16 +1,14 @@
 package ring
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCreateNodes(t *testing.T) {
-	nodes := createNodes(1, 2)
+	nodes := newNodes(1, 2)
 	require.NotNil(t, nodes)
 	require.Equal(t, nodes[0].ID, 1)
 	require.Equal(t, nodes[1].ID, 2)
@@ -18,15 +16,23 @@ func TestCreateNodes(t *testing.T) {
 
 func TestRing(t *testing.T) {
 	r := NewRing(1, 2)
-	require.Equal(t, 2, len(r.Nodes))
+	require.Greater(t, len(r.Nodes), 0)
 
-	load := r.getAssignments()
-	require.Equal(t, 2, len(load))
+	maxFactor := 5
 
-	for _, node := range load {
-		assert.Greater(t, len(node.Load), 0, fmt.Sprintf("no load for node ID: %d", node.ID))
+	for i := 3; i < 40; i++ {
+		r.RegisterNode(i)
+
+		for f := 1; f <= maxFactor; f++ {
+			r.SetFactor(f)
+
+			require.GreaterOrEqual(t, len(r.Nodes), len(r.Assignments))
+			require.Greater(t, len(r.Assignments), 0, "no assignments")
+
+			require.NoError(t, r.verifyAssignments(), "self verification")
+		}
 	}
 
-	_, errAs := load.WriteTo(os.Stdout)
-	require.NoError(t, errAs)
+	_, errAs := r.Assignments.WriteTo(os.Stdout)
+	require.NoError(t, errAs, "write to")
 }
