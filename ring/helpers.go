@@ -14,3 +14,12 @@ func occurences[T comparable](s []T) map[T]int {
 
 	return res
 }
+
+func deleteAtIndex[T any](s *[]T, ix int) {
+	if len(*s) == 0 {
+		return
+	}
+
+	copy((*s)[ix:], (*s)[ix+1:])
+	*s = (*s)[:len(*s)-1]
+}

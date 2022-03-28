@@ -48,13 +48,26 @@ func NewRing(nodeIDs ...int) *Ring {
 	return &ring
 }
 
-func (r *Ring) RegisterNode(id int) {
+func (r *Ring) RegisterNode(nodeID int) {
 	node := Node{
-		ID: id,
+		ID: nodeID,
 	}
 
 	r.Nodes = append(r.Nodes, &node)
 	r.renewAssignments()
+}
+
+func (r *Ring) UnRegisterNode(nodeID int) {
+	if len(r.Nodes) == 0 {
+		return
+	}
+
+	for ix, node := range r.Nodes {
+		if nodeID == node.ID {
+			copy(r.Nodes[ix:], r.Nodes[ix+1:])
+			r.Nodes = r.Nodes[:len(r.Nodes)-1]
+		}
+	}
 }
 
 func (r *Ring) ModifyFactor(by int) {

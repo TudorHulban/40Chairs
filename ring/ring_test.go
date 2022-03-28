@@ -9,10 +9,18 @@ import (
 )
 
 func TestCreateNodes(t *testing.T) {
-	nodes := newNodes(1, 2)
+	nodes := newNodes(1, 2, 3)
 	require.NotNil(t, nodes)
 	require.Equal(t, nodes[0].ID, 1)
 	require.Equal(t, nodes[1].ID, 2)
+}
+
+func TestDeRegisterNode(t *testing.T) {
+	r := NewRing(1, 2, 3, 4)
+	require.Equal(t, 4, len(r.Nodes))
+
+	r.UnRegisterNode(2)
+	require.Equal(t, []int{1, 3, 4}, r.Nodes.getIDs())
 }
 
 func TestAssignments(t *testing.T) {
