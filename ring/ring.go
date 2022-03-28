@@ -1,6 +1,10 @@
 package ring
 
-import "fmt"
+import (
+	"fmt"
+
+	"golang.org/x/exp/slices"
+)
 
 type Ring struct {
 	Nodes       Nodes
@@ -39,7 +43,7 @@ func NewRing(nodeIDs ...int) *Ring {
 		Load:  NewPartitions(1),
 	}
 
-	ring.updateAssignments()
+	ring.renewAssignments()
 
 	return &ring
 }
@@ -50,7 +54,7 @@ func (r *Ring) RegisterNode(id int) {
 	}
 
 	r.Nodes = append(r.Nodes, &node)
-	r.updateAssignments()
+	r.renewAssignments()
 }
 
 func (r *Ring) ModifyFactor(by int) {
@@ -58,7 +62,7 @@ func (r *Ring) ModifyFactor(by int) {
 		load.Factor = load.Factor + by
 	}
 
-	r.updateAssignments()
+	r.renewAssignments()
 }
 
 func (r *Ring) SetFactor(value int) {
@@ -66,22 +70,23 @@ func (r *Ring) SetFactor(value int) {
 		load.Factor = value
 	}
 
-	r.updateAssignments()
+	r.renewAssignments()
 }
 
-func (r *Ring) updateAssignments() {
-	res := make([]*Node, len(r.Nodes))
+func (r *Ring) renewAssignments() {
+	r.Assignments = make([]*Node, len(r.Nodes))
 	for ix, no := range r.Nodes {
-		res[ix] = &Node{
+		r.Assignments[ix] = &Node{
 			ID: no.ID,
 		}
 	}
 
 	allRanges := r.Load.getFactoredRanges()
 	var i int
+
 loop:
 	for i < len(allRanges) {
-		for _, node := range res {
+		for _, node := range r.Assignments {
 			node.Load = append(node.Load, allRanges[i])
 
 			if i == len(allRanges)-1 {
@@ -91,9 +96,30 @@ loop:
 			i++
 		}
 	}
+}
 
-	r.Assignments = []*Node{}
-	r.Assignments = append(r.Assignments, res...)
+func (r *Ring) redistributeAssignmentsFromNode(id int) error {
+	if slices.Contains[int](r.Nodes.getIDs(), id) {
+		return fmt.Errorf("redistribution cannot proceed as node with ID: %d was not removed from ring", id)
+	}
+
+	nodeRanges := r.Nodes.getRanges(id)
+	var i int
+
+loop:
+	for i < len(nodeRanges) {
+		for _, node := range r.Assignments {
+			node.Load = append(node.Load, nodeRanges[i])
+
+			if i == len(nodeRanges)-1 {
+				break loop
+			}
+
+			i++
+		}
+	}
+
+	return nil
 }
 
 func (r *Ring) verifyAssignments() error {

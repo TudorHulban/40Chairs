@@ -32,14 +32,34 @@ func (n Nodes) WriteTo(w io.Writer) (int, error) {
 	return w.Write([]byte(strings.Join(res, "\n")))
 }
 
-func (n Nodes) getRanges() []Range {
+func (n Nodes) getRanges(ids ...int) []Range {
 	var res []Range
 
-	for _, node := range n {
-		res = append(res, node.Load...)
+	if len(ids) == 0 {
+		for _, node := range n {
+			res = append(res, node.Load...)
+		}
+	} else {
+		for _, node := range n {
+			for _, id := range ids {
+				if id == node.ID {
+					res = append(res, node.Load...)
+				}
+			}
+		}
 	}
 
 	slices.Sort[Range](res)
+
+	return res
+}
+
+func (n Nodes) getIDs() []int {
+	var res []int
+
+	for _, node := range n {
+		res = append(res, node.ID)
+	}
 
 	return res
 }

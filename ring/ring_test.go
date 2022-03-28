@@ -26,8 +26,8 @@ func TestRing(t *testing.T) {
 	r := NewRing(1)
 	require.Greater(t, len(r.Nodes), 0)
 
-	maxNodes := 40
-	maxFactor := 5
+	maxNodes := 4
+	maxFactor := 3
 
 	output, errCr := os.Create("assignment_distribution")
 	if errCr != nil {
