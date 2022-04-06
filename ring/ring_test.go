@@ -15,23 +15,29 @@ func TestCreateNodes(t *testing.T) {
 	require.Equal(t, nodes[1].ID, 2)
 }
 
-func TestDeRegisterNode(t *testing.T) {
-	r := NewRing(1, 2, 3, 4)
-	require.Equal(t, 4, len(r.Nodes))
+func TestCreateLoads(t *testing.T) {
+	r := NewRing(2, 1, 2)
 
-	r.UnRegisterNode(2)
-	require.Equal(t, []int{1, 3, 4}, r.Nodes.getIDs())
+	require.Equal(t, 20, len(r.Nodes.getRanges()))
 }
 
-func TestAssignments(t *testing.T) {
-	r := NewRing(1, 2)
+func TestSetFactor(t *testing.T) {
+	r := NewRing(1, 1, 2)
 	r.SetFactor(2)
 
-	require.Equal(t, 20, len(r.Assignments.getRanges()))
+	require.Equal(t, 20, len(r.Nodes.getRanges()))
+}
+
+func TestDeRegisterNode(t *testing.T) {
+	r := NewRing(1, 1, 2, 3, 4)
+	require.Equal(t, 4, len(r.Nodes), "ring nodes")
+
+	r.UnRegisterNode(2)
+	require.Equal(t, []int{1, 3, 4}, r.Nodes.getIDs(), "unregister node")
 }
 
 func TestRing(t *testing.T) {
-	r := NewRing(1)
+	r := NewRing(1, 1)
 	require.Greater(t, len(r.Nodes), 0)
 
 	maxNodes := 3
@@ -55,22 +61,22 @@ func TestRing(t *testing.T) {
 
 			r.SetFactor(f)
 
-			require.GreaterOrEqual(t, len(r.Nodes), len(r.Assignments))
-			require.Greater(t, len(r.Assignments), 0, "no assignments")
+			require.GreaterOrEqual(t, len(r.Nodes), len(r.Nodes))
+			require.Greater(t, len(r.Nodes), 0, "no assignments")
 
 			require.NoError(t, r.verifyAssignments(), "self verification")
 
 			writeTo.WriteString(fmt.Sprintf("Nodes: %d. Factor: %d\n", len(r.Nodes), f))
 			// writeTo.WriteString(fmt.Sprintf("Assignments: %v.\n", r.Assignments.getRanges()))
 
-			_, errAs := r.Assignments.WriteTo(writeTo)
+			_, errAs := r.Nodes.WriteTo(writeTo)
 			require.NoError(t, errAs, "write to")
 		}
 	}
 }
 
 func TestRedistribution(t *testing.T) {
-	r := NewRing(1, 2, 3)
+	r := NewRing(1, 1, 2, 3)
 	require.Equal(t, 3, len(r.Nodes))
 
 	r.SetFactor(2)
@@ -80,7 +86,7 @@ func TestRedistribution(t *testing.T) {
 		t.FailNow()
 	}
 
-	_, errWriteAssignments := r.Assignments.WriteTo(assignments)
+	_, errWriteAssignments := r.Nodes.WriteTo(assignments)
 	require.NoError(t, errWriteAssignments, "write to")
 
 	r.UnRegisterNode(2)
@@ -92,7 +98,7 @@ func TestRedistribution(t *testing.T) {
 		t.FailNow()
 	}
 
-	_, errWriteRedistribution := r.Assignments.WriteTo(redistribution)
+	_, errWriteRedistribution := r.Nodes.WriteTo(redistribution)
 	require.NoError(t, errWriteRedistribution, "write to")
 }
 

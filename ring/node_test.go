@@ -20,4 +20,7 @@ func TestGetRanges(t *testing.T) {
 	nodes := Nodes{&n2, &n1}
 	require.Equal(t, 2, len(nodes.getIDs()))
 	require.Equal(t, []Range{"1", "2", "3"}, nodes.getRanges())
+
+	nodes.resetRanges()
+	require.Equal(t, 0, len(nodes.getRanges()), "after reset ranges")
 }
