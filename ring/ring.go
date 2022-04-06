@@ -7,9 +7,8 @@ import (
 )
 
 type Ring struct {
-	Nodes       Nodes
-	Assignments Nodes
-	Load        Partitions
+	Nodes Nodes
+	Load  Partitions
 }
 
 func newNodes(nodeIDs ...int) Nodes {
@@ -26,7 +25,7 @@ func newNodes(nodeIDs ...int) Nodes {
 	return res
 }
 
-func NewRing(nodeIDs ...int) *Ring {
+func NewRing(factor int, nodeIDs ...int) *Ring {
 	if len(nodeIDs) == 0 {
 		return nil
 	}
@@ -40,10 +39,10 @@ func NewRing(nodeIDs ...int) *Ring {
 
 	ring := Ring{
 		Nodes: res,
-		Load:  NewPartitions(1),
+		Load:  NewPartitions(factor),
 	}
 
-	ring.renewAssignments()
+	ring.resetAssignments()
 
 	return &ring
 }
@@ -54,7 +53,7 @@ func (r *Ring) RegisterNode(nodeID int) {
 	}
 
 	r.Nodes = append(r.Nodes, &node)
-	r.renewAssignments()
+	r.resetAssignments()
 }
 
 func (r *Ring) UnRegisterNode(nodeID int) {
@@ -66,7 +65,7 @@ func (r *Ring) UnRegisterNode(nodeID int) {
 
 	for ix, node := range r.Nodes {
 		if nodeID == node.ID {
-			nodeRanges = append(nodeRanges, r.Assignments[ix].Load...)
+			nodeRanges = append(nodeRanges, r.Nodes[ix].Load...)
 
 			copy(r.Nodes[ix:], r.Nodes[ix+1:])
 			r.Nodes = r.Nodes[:len(r.Nodes)-1]
@@ -75,7 +74,7 @@ func (r *Ring) UnRegisterNode(nodeID int) {
 		}
 	}
 
-	r.redistributeAssignmentsFrom(nodeID, nodeRanges)
+	r.redistributeLoad(nodeRanges)
 }
 
 func (r *Ring) ModifyFactor(by int) {
@@ -83,7 +82,7 @@ func (r *Ring) ModifyFactor(by int) {
 		load.Factor = load.Factor + by
 	}
 
-	r.renewAssignments()
+	r.resetAssignments()
 }
 
 func (r *Ring) SetFactor(value int) {
@@ -91,34 +90,24 @@ func (r *Ring) SetFactor(value int) {
 		load.Factor = value
 	}
 
-	r.renewAssignments()
+	r.resetAssignments()
+}
+
+func (r *Ring) sortRanges() {
+	for _, node := range r.Nodes {
+		slices.Sort[Range](node.Load)
+	}
 }
 
 func (r *Ring) resetAssignments() {
-	r.Assignments = make([]*Node, len(r.Nodes))
-
-	for ix, no := range r.Nodes {
-		r.Assignments[ix] = &Node{
-			ID: no.ID,
-		}
-	}
-}
-
-func (r *Ring) sortAssignments() {
-	for _, assignment := range r.Assignments {
-		slices.Sort[Range](assignment.Load)
-	}
-}
-
-func (r *Ring) renewAssignments() {
-	r.resetAssignments()
+	r.Nodes.resetRanges()
 
 	allRanges := r.Load.getFactoredRanges()
 	var i int
 
 loop:
 	for i < len(allRanges) {
-		for _, node := range r.Assignments {
+		for _, node := range r.Nodes {
 			node.Load = append(node.Load, allRanges[i])
 
 			if i == len(allRanges)-1 {
@@ -130,24 +119,12 @@ loop:
 	}
 }
 
-func (r *Ring) redistributeAssignmentsFrom(nodeID int, ranges []Range) error {
-	if slices.Contains[int](r.Nodes.getIDs(), nodeID) {
-		return fmt.Errorf("redistribution cannot proceed as node with ID: %d was not removed from ring", nodeID)
-	}
-
+func (r *Ring) redistributeLoad(ranges []Range) {
 	var i int
-	var ix int
-
-	fmt.Println("ranges:", ranges)
 
 loop:
 	for i < len(ranges) {
-		for j, node := range r.Assignments {
-			if node.ID == nodeID {
-				ix = j
-				continue
-			}
-
+		for _, node := range r.Nodes {
 			if slices.Index[Range](node.Load, ranges[i]) == -1 {
 				node.Load = append(node.Load, ranges[i])
 
@@ -160,18 +137,13 @@ loop:
 		}
 	}
 
-	copy(r.Assignments[ix:], r.Assignments[ix+1:])
-	r.Assignments = r.Assignments[:len(r.Assignments)-1]
-
-	r.sortAssignments()
-
-	return nil
+	r.sortRanges()
 }
 
 func (r *Ring) verifyAssignments() error {
 	var assignedRanges []Range
 
-	for _, node := range r.Assignments {
+	for _, node := range r.Nodes {
 		assignedRanges = append(assignedRanges, node.Load...)
 	}
 

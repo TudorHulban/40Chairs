@@ -54,6 +54,12 @@ func (n Nodes) getRanges(ids ...int) []Range {
 	return res
 }
 
+func (n Nodes) resetRanges() {
+	for _, node := range n {
+		*node = Node{ID: node.ID}
+	}
+}
+
 func (n Nodes) getIDs() []int {
 	var res []int
 
